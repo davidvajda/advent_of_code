@@ -8,6 +8,9 @@ class Program
         Part1(ParseInput(File.ReadAllLines("./test-input.txt")));
         Part1(ParseInput(File.ReadAllLines("./input.txt")));
 
+        Part2(ParseInput(File.ReadAllLines("./test-input.txt")));
+        Part2(ParseInput(File.ReadAllLines("./test-input2.txt")));
+        Part2(ParseInput(File.ReadAllLines("./input.txt")));
     }
 
     static void Part1((char direction, int length)[] steps)
@@ -17,17 +20,13 @@ class Program
 
         var tailVisitedCoords = new Dictionary<int, HashSet<int>>();
         tailVisitedCoords.Add(0, new HashSet<int>());
-        tailVisitedCoords[0].Add(0);        
-        int countInst = 0;
-        int countMoves = 0;
+        tailVisitedCoords[0].Add(0);
+
         foreach (var step in steps)
-        {
-            countInst++;
             for (int i = 0; i < step.length; i++)
             {
-                countMoves++;
                 var nextHead = GetNextPosition(head, step.direction);
-                var nextTail = GetNextTailPosition(tail, head, nextHead, step.direction);
+                var nextTail = GetNextTailPosition(tail, head, nextHead);
 
                 if (tailVisitedCoords.ContainsKey(nextTail.x))
                     tailVisitedCoords[nextTail.x].Add(nextTail.y);
@@ -40,9 +39,6 @@ class Program
                 tail = nextTail;
                 head = nextHead;
             }
-        }
-
-        Console.WriteLine($"instr {countInst} moves {countMoves}");
 
         int count = 0;
         foreach (var kv in tailVisitedCoords)
@@ -51,10 +47,71 @@ class Program
         Console.WriteLine($"Tail visited {count} unique coords");
     }
 
-    static (int x, int y) GetNextTailPosition((int x, int y) tail, (int x, int y) head, (int x, int y) nextHead, char direction)
+    static void Part2((char direction, int length)[] steps)
     {
-        if (TailHasToMove(tail, nextHead))
-            return head;
+        var rope = new int[10, 2];
+
+        var tailVisitedCoords = new Dictionary<int, HashSet<int>>();
+        tailVisitedCoords.Add(0, new HashSet<int>());
+        tailVisitedCoords[0].Add(0);
+
+        foreach (var step in steps)
+            for (int i = 0; i < step.length; i++)
+            {
+                // head is x, y
+                var head = (rope[0, 0], rope[0, 1]);
+                var nextHead = GetNextPosition(head, step.direction);
+                var ogRope = new int[10, 2];
+                for (int xx = 0; xx < 10; xx++)
+                {
+                    ogRope[xx, 0] = rope[xx, 0];
+                    ogRope[xx, 1] = rope[xx, 1];
+                }
+
+                rope[0, 0] = nextHead.x;
+                rope[0, 1] = nextHead.y;
+
+                // nexthead is saved in rope[0]
+
+                for (int y = 1; y < 10; y++)
+                {
+
+                    var nextTailHead = (rope[y - 1, 0], rope[y - 1, 1]);
+                    var tailHead = (ogRope[y - 1, 0], ogRope[y - 1, 1]);
+
+                    var tail = (rope[y, 0], rope[y, 1]);
+                    var nextTail = GetNextTailPosition(tail, tailHead, nextTailHead);
+
+                    rope[y, 0] = nextTail.x;
+                    rope[y, 1] = nextTail.y;
+                }
+                (int x, int y) lastKnot = (rope[9, 0], rope[9, 1]);
+                if (tailVisitedCoords.ContainsKey(lastKnot.x))
+                    tailVisitedCoords[lastKnot.x].Add(lastKnot.y);
+                else
+                {
+                    tailVisitedCoords.Add(lastKnot.x, new HashSet<int>());
+                    tailVisitedCoords[lastKnot.x].Add(lastKnot.y);
+                }
+                //Console.WriteLine("last knot at x{0} y{1}", lastKnot.x, lastKnot.y);
+            }
+
+        int count = 0;
+        foreach (var kv in tailVisitedCoords)
+            count += kv.Value.Count();
+
+        Console.WriteLine($"Tail visited {count} unique coords");
+    }
+
+    static (int x, int y) GetNextTailPosition((int x, int y) tail,
+    (int x, int y) head, (int x, int y) nextHead)
+    {
+        var diffX = nextHead.x - tail.x;
+        var diffY = nextHead.y - tail.y;
+
+        if (Math.Abs(diffX) > 1 || Math.Abs(diffY) > 1)
+            return (tail.x + Math.Sign(diffX), tail.y + Math.Sign(diffY));
+
         return tail;
     }
 
@@ -124,7 +181,7 @@ class Program
         var steps = new (char, int)[lines.Length];
         for (int i = 0; i < lines.Length; i++)
         {
-            string [] splitLine = lines[i].Split(" ");
+            string[] splitLine = lines[i].Split(" ");
             steps[i] = (splitLine[0][0], Convert.ToInt32(splitLine[1]));
         }
         return steps;
